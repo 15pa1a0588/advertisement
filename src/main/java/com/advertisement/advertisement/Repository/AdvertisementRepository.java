@@ -1,4 +1,7 @@
 package com.advertisement.advertisement.Repository;
 
-public interface AdvertisementRepository {
+import com.advertisement.advertisement.Entity.Advertisement;
+import org.springframework.data.repository.CrudRepository;
+
+public interface AdvertisementRepository extends CrudRepository<String,String> {
 }

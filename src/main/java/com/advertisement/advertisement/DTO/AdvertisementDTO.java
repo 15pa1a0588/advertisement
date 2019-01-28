@@ -28,11 +28,4 @@ public class AdvertisementDTO {
     public void setCategory(String category) {
         this.category = category;
     }
-
-    public AdvertisementDTO(String advertisementId, String imageURL, String category) {
-
-        this.advertisementId = advertisementId;
-        this.imageURL = imageURL;
-        this.category = category;
-    }
 }

@@ -5,7 +5,9 @@ import org.hibernate.annotations.GenericGenerator;
 import javax.persistence.*;
 
 @Entity
+@Table(name = Advertisement.TABLE_NAME)
 public class Advertisement {
+    public static final String TABLE_NAME = "ADVERTISEMENT";
     public static final String ID_COLUMN="ID";
     @Id
     @GeneratedValue(generator = "uuid")                 // hibernate

@@ -6,6 +6,8 @@ import com.advertisement.advertisement.Service.AdvertisementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class AdvertisementServiceImpl implements AdvertisementService {
     @Autowired
@@ -26,7 +28,7 @@ public class AdvertisementServiceImpl implements AdvertisementService {
     }
 
     @Override
-    public Advertisement getDetails(String category){
+    public List<Advertisement> getDetails(String category){
         return advertisementRepository.getDetails(category);
     }
 }

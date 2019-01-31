@@ -5,9 +5,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface AdvertisementRepository extends CrudRepository<Advertisement,String> {
 //    Advertisement getAdvertisementDetails(String userId);
     @Query(value = "select * from advertisement where category=?1",nativeQuery = true)
-    Advertisement getDetails(String category);
+    List<Advertisement> getDetails(String category);
 }

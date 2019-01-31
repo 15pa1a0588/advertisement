@@ -16,6 +16,8 @@ public class Advertisement {
     private String advertisementId;
     private String imageURL;
     private String category;
+    private String advertisementName;
+    private String advertisementDescription;
 
     public String getAdvertisementId() {
         return advertisementId;
@@ -33,17 +35,35 @@ public class Advertisement {
         this.imageURL = imageURL;
     }
 
+    public String getAdvertisementName() {
+        return advertisementName;
+    }
+
+    public void setAdvertisementName(String advertisementName) {
+        this.advertisementName = advertisementName;
+    }
+
+    public String getAdvertisementDescription() {
+        return advertisementDescription;
+    }
+
+    public void setAdvertisementDescription(String advertisementDescription) {
+        this.advertisementDescription = advertisementDescription;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
     @Override
     public String toString() {
         return "Advertisement{" +
                 "advertisementId='" + advertisementId + '\'' +
                 ", imageURL='" + imageURL + '\'' +
                 ", category='" + category + '\'' +
+                ", advertisementName='" + advertisementName + '\'' +
+                ", advertisementDescription='" + advertisementDescription + '\'' +
                 '}';
-    }
-
-    public String getCategory() {
-        return category;
     }
 
     public void setCategory(String category) {

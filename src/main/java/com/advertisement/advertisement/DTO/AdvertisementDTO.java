@@ -1,11 +1,13 @@
 package com.advertisement.advertisement.DTO;
 
 public class AdvertisementDTO {
+
     private String advertisementId;
     private String imageURL;
     private String category;
     private String advertisementName;
     private String advertisementDescription;
+    private String clickURL;
 
     public String getAdvertisementId() {
         return advertisementId;
@@ -45,5 +47,25 @@ public class AdvertisementDTO {
 
     public void setAdvertisementDescription(String advertisementDescription) {
         this.advertisementDescription = advertisementDescription;
+    }
+
+    public String getClickURL() {
+        return clickURL;
+    }
+
+    public void setClickURL(String clickURL) {
+        this.clickURL = clickURL;
+    }
+
+    @Override
+    public String toString() {
+        return "AdvertisementDTO{" +
+                "advertisementId='" + advertisementId + '\'' +
+                ", imageURL='" + imageURL + '\'' +
+                ", category='" + category + '\'' +
+                ", advertisementName='" + advertisementName + '\'' +
+                ", advertisementDescription='" + advertisementDescription + '\'' +
+                ", clickURL='" + clickURL + '\'' +
+                '}';
     }
 }

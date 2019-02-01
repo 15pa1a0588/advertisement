@@ -9,4 +9,5 @@ public interface AdvertisementService {
     public void update(Advertisement advertisement);
     public List<Advertisement> getDetails(String category);
     public void delete(String advertisementId);
+    public List<Advertisement> getAnyAds();
 }

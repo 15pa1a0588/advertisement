@@ -4,9 +4,11 @@ import com.advertisement.advertisement.DTO.AdvertisementDTO;
 import com.advertisement.advertisement.DTO.ResponseDTO;
 import com.advertisement.advertisement.Entity.Advertisement;
 import com.advertisement.advertisement.Service.AdvertisementService;
+import com.advertisement.advertisement.util.CategoryContainer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -14,139 +16,205 @@ import java.util.*;
 
 @RestController
 public class AdvertisementController {
+
+
+
     @Autowired
     AdvertisementService advertisementService;
 
-    @PostMapping("/addadvertisement")
+    @Value("${recommendation.service.address}")
+    private String recommendationServiceAddress;
+
+    @PostMapping("/advertisement/add")
     public void add(@RequestBody AdvertisementDTO advertisementDTO){
         Advertisement advertisement=new Advertisement();
         BeanUtils.copyProperties(advertisementDTO,advertisement);
         advertisementService.add(advertisement);
     }
-    @GetMapping("/getAdvertisement")
-    public AdvertisementDTO select(@RequestParam String category){
-        System.out.println(category);
-        AdvertisementDTO advertisementDTO=new AdvertisementDTO();
-        Advertisement advertisement=advertisementService.getDetails(category).get(0);
-        BeanUtils.copyProperties(advertisement, advertisementDTO);
-        return advertisementDTO;
-    }
-//    @GetMapping("/getadvertisement")
-//    public AdvertisementDTO select(@RequestParam String category){
-//        AdvertisementDTO advertisementDTO=new AdvertisementDTO();
-//        Advertisement advertisement=advertisementService.getDetails(category);
-//        BeanUtils.copyProperties(advertisement, advertisementDTO);
-//        return advertisementDTO;
-//    }
 
-//    private  HashMap sortByCategoryValue(Map<String,Integer> tmp) {
-//
-//
-//        List list = new LinkedList(tmp.entrySet());
-//        // Defined Custom Comparator here
-//        Collections.sort(list, new Comparator() {
-//            public int compare(Object o1, Object o2) {
-//                return ((Comparable) ((Map.Entry) (o2)).getValue())
-//                        .compareTo(((Map.Entry) (o1)).getValue());
-//            }
-//        });
-//
-//        HashMap sortedHashMap = new LinkedHashMap();
-//        for (Iterator it = list.iterator(); it.hasNext();) {
-//            Map.Entry entry = (Map.Entry) it.next();
-//            sortedHashMap.put(entry.getKey(), entry.getValue());
-//        }
-//        return sortedHashMap;
-//    }
 
-//    @GetMapping("/getDetails")
-//    public void selectDetails(){
-//
-//        HashMap<String, Integer> hmap = new HashMap<String, Integer>();
-//        hmap.put("movies",1);
-//        hmap.put("sports",9);
-//        hmap.put("generalknowledge",4);
-//        hmap.put("quiz",5);
-//
-//        HashMap<String, Integer> map = sortByCategoryValue(hmap);
-////        System.out.println(map);
-////        System.out.println(map.size());
-//
-//        Object[] Keys = map.keySet().toArray();
-//        Object key = Keys[new Random().nextInt(3)];
-//        System.out.println("************ Random Value ************ \n" + key + " :: " + map.get(key));
-//
-////        Random generator = new Random();
-////        System.out.println(generator);
-////        Object []values = map.values().toArray();
-////        randomValue = values[generator.nextInt(values.length)];
-////        System.out.println(randomValue);
-//
-////        String category="";
-////        AdvertisementDTO advertisementDTO=new AdvertisementDTO();
-////        Advertisement advertisement=advertisementService.getDetails(category);
-////        BeanUtils.copyProperties(advertisement, advertisementDTO);
-////        return advertisementDTO;
-//
-//    }
+    @GetMapping("/categoryPreference/get/{userId}")
+    public ResponseDTO<LinkedList<CategoryContainer>> selectCategory(@PathVariable String userId)
+    {
+        RestTemplate recommendationService=new RestTemplate();
 
-    public HashMap<String,Double> sortByValue(HashMap<String,Double> m){
-        List<Map.Entry<String, Double> > list =
-                new ArrayList<Map.Entry<String,Double>>(m.entrySet());
-        // Sort the list
-        Collections.sort(list, new Comparator<Map.Entry<String, Double> >() {
-            public int compare(Map.Entry<String, Double> o1,
-                               Map.Entry<String, Double> o2)
-            {
-                return (o2.getValue()).compareTo(o1.getValue());
+        //try getting recommendation for the user
+        ResponseDTO<HashMap<String,Double>> recommendationResponse=recommendationService.getForObject(
+                "http://"+recommendationServiceAddress+"/recommendation/get/"+userId,
+                ResponseDTO.class);
+
+        if(recommendationResponse.getStatus().equals("FAILURE"))
+        {
+            recommendationResponse=recommendationService.getForObject(
+                    "http://"+recommendationServiceAddress+"/recommendation/getForNewUser",
+                    ResponseDTO.class);
+
+        }
+
+        if(recommendationResponse.getStatus().equals("FAILURE")||recommendationResponse.getResponse()==null)
+        {
+
+            ResponseDTO<LinkedList<CategoryContainer>> responseDTO=new ResponseDTO<>();
+            responseDTO.setStatus("FAILURE");
+            responseDTO.setMessage("FAILED DUE TO SOME INTERNAL ERROR #E1");
+            responseDTO.setResponse(null);
+            return responseDTO;
+        }
+
+        LinkedList<CategoryContainer> selectedQueue=new LinkedList<CategoryContainer>();
+
+        double sumOfScores=0;
+
+        for(String categories: recommendationResponse.getResponse().keySet())
+        {
+            double thisScore=recommendationResponse.getResponse().get(categories);
+            selectedQueue.add(new CategoryContainer(thisScore,categories));
+            sumOfScores+=thisScore;
+        }
+
+        for(CategoryContainer c:selectedQueue)
+        {
+            c.setScore(c.getScore()/sumOfScores);
+        }
+
+        Collections.sort(selectedQueue, new Comparator<CategoryContainer>() {
+            @Override
+            public int compare(CategoryContainer o1, CategoryContainer o2) {
+                return Double.compare(o1.getScore(),o2.getScore());
             }
         });
-        int count=0;
-        // put data from sorted list to hashmap
-        HashMap<String, Double> temp = new LinkedHashMap<String, Double>();
-        for (Map.Entry<String, Double> aa : list) {
-            if(count<3) {
-                count++;
-                temp.put(aa.getKey(), aa.getValue());
-            }
+
+        sumOfScores=1;
+        double coverageLimit=0.7*sumOfScores;
+
+        while(selectedQueue.size()>0&&sumOfScores>coverageLimit)
+        {
+            double thisScore=selectedQueue.peekFirst().getScore();
+
+            if(sumOfScores-thisScore<=coverageLimit) break;
+
+            sumOfScores-=thisScore;
+
+            selectedQueue.pollFirst();
         }
-        return temp;
-    }
-    @GetMapping("/getAdvertisementDetails/{id}")
-    public AdvertisementDTO selectDetails(@PathVariable String id){
-        RestTemplate restTemplate=new RestTemplate();
-        ResponseDTO<HashMap<String,Double>> responseDTO;
-        responseDTO = restTemplate.getForObject("http://10.177.7.135:8000/recommendation/get/" + id, ResponseDTO.class);
-        Object obj=new Object();
-        obj=responseDTO.getResponse();
-        if(responseDTO.getStatus().equals("FAILURE")) {
-            responseDTO = restTemplate.getForObject("http://10.177.7.135:8000/recommendation/getForNewUser", ResponseDTO.class);
-            obj=responseDTO.getResponse();
-        }
-        ObjectMapper oMapper = new ObjectMapper();
-        HashMap<String, Double> map = oMapper.convertValue(obj, HashMap.class);
-        HashMap<String,Double> tmp=sortByValue(map);
-        System.out.println(tmp);
-        List<String> keys = new ArrayList<String>(tmp.keySet());
-        Random rand = new Random();
-        String key = keys.get(rand.nextInt(keys.size()));
-        System.out.println(key);
-        AdvertisementDTO advertisementDTO=new AdvertisementDTO();
-        Advertisement advertisement=advertisementService.getDetails(key).get(0);
-        BeanUtils.copyProperties(advertisement, advertisementDTO);
-        return advertisementDTO;
+
+        ResponseDTO<LinkedList<CategoryContainer>> responseDTO=new ResponseDTO<>();
+        responseDTO.setStatus("SUCCESS");
+        responseDTO.setMessage("SUCCESS");
+        responseDTO.setResponse(selectedQueue);
+
+        return responseDTO;
     }
 
-    @GetMapping("/getAdvertisementDetails/{userId}/{count}")
-    public List<AdvertisementDTO> bulkAds(@PathVariable String userId,@PathVariable int count)
-    {
-        List<AdvertisementDTO> bulkAds=new ArrayList<AdvertisementDTO>();
-        while(bulkAds.size()<count)
+    @GetMapping("/advertisement/get/{id}")
+    public ResponseDTO<AdvertisementDTO> selectDetails(@PathVariable String id){
+
+
+        ResponseDTO<LinkedList<CategoryContainer>> categoryResponse=selectCategory(id);
+
+        if((!categoryResponse.getStatus().equals("SUCCESS"))||categoryResponse.getResponse()==null)
         {
-            AdvertisementDTO advertisementDTO=selectDetails(userId);
-            bulkAds.add(advertisementDTO);
+            ResponseDTO<AdvertisementDTO> responseDTO=new ResponseDTO<AdvertisementDTO>();
+            responseDTO.setStatus("FAILURE");
+            responseDTO.setMessage(categoryResponse.getMessage());
+            responseDTO.setResponse(null);
+            return responseDTO;
         }
-        return bulkAds;
+
+        LinkedList<CategoryContainer> sortedCategories=categoryResponse.getResponse();
+
+        int randomIndex=(int)Math.floor(Math.random()*(sortedCategories.size()-1));
+
+        CategoryContainer selectedCategory=sortedCategories.get(randomIndex);
+
+        if(selectedCategory==null)
+        {
+            ResponseDTO<AdvertisementDTO> responseDTO=new ResponseDTO<AdvertisementDTO>();
+            responseDTO.setStatus("FAILURE");
+            responseDTO.setMessage("FAILED DUE TO SOME INTERNAL ERROR #E2");
+            responseDTO.setResponse(null);
+            return responseDTO;
+        }
+
+        List<Advertisement> selectedAd=  advertisementService.getDetails(selectedCategory.getCategoryName());
+
+        if(selectedAd==null||selectedAd.size()==0)
+        {
+            ResponseDTO<AdvertisementDTO> responseDTO=new ResponseDTO<AdvertisementDTO>();
+            responseDTO.setStatus("FAILURE");
+            responseDTO.setMessage("FAILED DUE TO SOME INTERNAL ERROR #E3");
+            responseDTO.setResponse(null);
+            return responseDTO;
+        }
+
+        AdvertisementDTO selectedAdDTO=new AdvertisementDTO();
+        BeanUtils.copyProperties(selectedAd.get(0),selectedAdDTO);
+
+        ResponseDTO<AdvertisementDTO> responseDTO=new ResponseDTO<AdvertisementDTO>();
+        responseDTO.setStatus("SUCCESS");
+        responseDTO.setMessage(selectedCategory.getCategoryName());
+        responseDTO.setResponse(selectedAdDTO);
+
+        return responseDTO;
+
+    }
+
+    @GetMapping("/advertisement/bulk/{userId}/{count}")
+    public ResponseDTO<List<AdvertisementDTO>> bulkAds(@PathVariable String userId,@PathVariable int count)
+    {
+        ResponseDTO<LinkedList<CategoryContainer>> selectedCategoriesResponse=selectCategory(userId);
+
+        if(!selectedCategoriesResponse.getStatus().equals("SUCCESS"))
+        {
+            ResponseDTO<List<AdvertisementDTO>> responseDTO=new ResponseDTO<>();
+            responseDTO.setStatus(selectedCategoriesResponse.getStatus());
+            responseDTO.setMessage(selectedCategoriesResponse.getMessage());
+            responseDTO.setResponse(new LinkedList<AdvertisementDTO>());
+            return responseDTO;
+        }
+        LinkedList<CategoryContainer> selectedCategories=selectedCategoriesResponse.getResponse();
+
+        List<AdvertisementDTO> selectedAds=new LinkedList<>();
+        CategoryContainer currentAd=selectedCategories.peekLast();
+
+        while (selectedAds.size()<count&&selectedCategories.size()>0)
+        {
+            List<Advertisement> listOfAdvertisement=advertisementService.getDetails(currentAd.getCategoryName());
+
+            int indexLimit=(int)(Math.random()*(count-selectedAds.size()));
+            indexLimit=Math.max(0,indexLimit-1);
+
+            indexLimit=Math.min(listOfAdvertisement.size()-1,indexLimit);
+
+            for(int index=0;index<=indexLimit;index++)
+            {
+                AdvertisementDTO advertisementDTO=new AdvertisementDTO();
+                BeanUtils.copyProperties(listOfAdvertisement.get(index),advertisementDTO);
+                selectedAds.add(advertisementDTO);
+            }
+
+            if(selectedCategories.size()>0)
+            {
+                selectedCategories.pollLast();
+                currentAd=selectedCategories.peekLast();
+            }
+
+        }
+
+        while (selectedAds.size()<count)
+        {
+            int randomIndex=(int)((Math.random())*(selectedAds.size()));
+            randomIndex=Math.max(0,randomIndex-1);
+            selectedAds.add(selectedAds.get(randomIndex));
+        }
+
+        ResponseDTO<List<AdvertisementDTO>> responseDTO=new ResponseDTO<>();
+        responseDTO.setStatus("SUCCESS");
+        responseDTO.setMessage("SUCCESS");
+        responseDTO.setResponse(selectedAds);
+
+        return responseDTO;
+
     }
 
     @PutMapping("/updateadvertisement")
@@ -155,6 +223,7 @@ public class AdvertisementController {
         BeanUtils.copyProperties(advertisementDTO,advertisement);
         advertisementService.add(advertisement);
     }
+
     @DeleteMapping("/deleteadvertisement")
     public void delete(@RequestParam String advertisementId){
         advertisementService.delete(advertisementId);

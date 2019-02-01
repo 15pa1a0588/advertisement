@@ -7,17 +7,18 @@ import javax.persistence.*;
 @Entity
 @Table(name = Advertisement.TABLE_NAME)
 public class Advertisement {
+
     public static final String TABLE_NAME = "ADVERTISEMENT";
-    public static final String ID_COLUMN="ID";
+
     @Id
-    @GeneratedValue(generator = "uuid")                 // hibernate
+    @GeneratedValue(generator = "uuid")
     @GenericGenerator(name = "uuid", strategy = "uuid2")
-    @Column(name = Advertisement.ID_COLUMN)
     private String advertisementId;
     private String imageURL;
     private String category;
     private String advertisementName;
     private String advertisementDescription;
+    private String clickURL;
 
     public String getAdvertisementId() {
         return advertisementId;
@@ -55,6 +56,18 @@ public class Advertisement {
         return category;
     }
 
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getClickURL() {
+        return clickURL;
+    }
+
+    public void setClickURL(String clickURL) {
+        this.clickURL = clickURL;
+    }
+
     @Override
     public String toString() {
         return "Advertisement{" +
@@ -63,11 +76,7 @@ public class Advertisement {
                 ", category='" + category + '\'' +
                 ", advertisementName='" + advertisementName + '\'' +
                 ", advertisementDescription='" + advertisementDescription + '\'' +
+                ", clickURL='" + clickURL + '\'' +
                 '}';
     }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
 }
